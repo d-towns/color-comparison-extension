@@ -1,0 +1,26 @@
+#imgPreview {
+    width: 200px;
+    height: 200px;
+    object-fit: contain;
+}
+
+#imgPreviewContainer {
+    display: flex;
+    justify-content: center;
+    flex-direction: row;
+    align-items: center;
+    height: 100%;
+}
+
+#colorsContainer {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.colorContainer {
+    width: 100px;
+    height: 50px;
+}
