@@ -1,17 +1,19 @@
 {
-    "name": "Clothing Color Comparison",
-    "version": "0.0.1",
-    "description": "Hello World for a Chrome extension.",
-    "manifest_version": 3,
-    "action": {
-      "default_popup": "popup.html"
-    },
-     "background": {
+  "name": "Clothing Color Comparison",
+  "version": "0.0.1",
+  "description": "Hello World for a Chrome extension.",
+  "manifest_version": 3,
+  "side_panel": {
+    "default_path": "popup.html"
+  },
+  "background": {
     "service_worker": "background.js"
   },
-  "permissions": [
-    "storage",
-    "activeTab",
-    "scripting"
+  "permissions": ["storage", "activeTab", "scripting", "sidePanel"],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
   ]
-  }
+}

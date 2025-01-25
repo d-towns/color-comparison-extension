@@ -120,8 +120,10 @@ export class ColorExtractor {
             // Assign pixels to nearest cluster
             for (let i = 0; i < this.pixelData.length; i += 3) {
                 const pixel = this.getRGBFromPixel(i);
-                const clusterIndex = this.findNearestCluster(pixel, clusters);
-                clusters[clusterIndex].pixels.push(pixel);
+                if (!(pixel.r === 255 && pixel.g === 255 && pixel.b === 255)) {
+                    const clusterIndex = this.findNearestCluster(pixel, clusters);
+                    clusters[clusterIndex].pixels.push(pixel);
+                }
             }
 
             // Calculate new centers
