@@ -27,6 +27,7 @@ export class ColorExtractor {
             // Resize image to reduce processing time while maintaining color distribution
             const image = await sharp(imageBuffer)
                 .resize(100, 100, { fit: 'inside' })
+                .ensureAlpha() // Ensure alpha channel is present
                 .raw()
                 .toBuffer({ resolveWithObject: true });
 
@@ -97,15 +98,8 @@ export class ColorExtractor {
             throw new Error('No image loaded');
         }
 
-        // Initialize clusters with random pixels
-        let clusters: Cluster[] = Array(numColors)
-            .fill(null)
-            .map(() => ({
-                center: this.getRGBFromPixel(
-                    Math.floor(Math.random() * (this.pixelData!.length / 3)) * 3
-                ),
-                pixels: [],
-            }));
+        // Initialize clusters using k-means++
+        let clusters: Cluster[] = this.initializeClusters(numColors);
 
         const maxIterations = 20;
         let iterations = 0;
@@ -118,9 +112,10 @@ export class ColorExtractor {
             clusters.forEach((cluster) => (cluster.pixels = []));
 
             // Assign pixels to nearest cluster
-            for (let i = 0; i < this.pixelData.length; i += 3) {
-                const pixel = this.getRGBFromPixel(i);
-                if (!(pixel.r === 255 && pixel.g === 255 && pixel.b === 255)) {
+            for (let i = 0; i < this.pixelData.length; i += 4) { // Include alpha channel
+                const alpha = this.pixelData[i + 3];
+                if (alpha > 0) { // Skip fully transparent pixels
+                    const pixel = this.getRGBFromPixel(i);
                     const clusterIndex = this.findNearestCluster(pixel, clusters);
                     clusters[clusterIndex].pixels.push(pixel);
                 }
@@ -152,5 +147,52 @@ export class ColorExtractor {
                 prevalence: cluster.pixels.length / (this.width * this.height),
             }))
             .slice(0, numColors);
+    }
+
+    private initializeClusters(numColors: number): Cluster[] {
+        const clusters: Cluster[] = [];
+        const usedIndices = new Set<number>();
+
+        // First cluster center is a random pixel
+        const firstIndex = Math.floor(Math.random() * (this.pixelData!.length / 4)) * 4;
+        clusters.push({
+            center: this.getRGBFromPixel(firstIndex),
+            pixels: [],
+        });
+        usedIndices.add(firstIndex);
+
+        // Subsequent centers are chosen using k-means++
+        for (let i = 1; i < numColors; i++) {
+            let totalDistance = 0;
+            const distances: number[] = [];
+
+            for (let j = 0; j < this.pixelData!.length; j += 4) {
+                if (!usedIndices.has(j)) {
+                    const pixel = this.getRGBFromPixel(j);
+                    const nearestCluster = this.findNearestCluster(pixel, clusters);
+                    const distance = this.colorDistance(pixel, clusters[nearestCluster].center);
+                    distances.push(distance);
+                    totalDistance += distance;
+                }
+            }
+
+            // Choose the next center probabilistically
+            const randomValue = Math.random() * totalDistance;
+            let cumulativeDistance = 0;
+            for (let j = 0; j < distances.length; j++) {
+                cumulativeDistance += distances[j];
+                if (cumulativeDistance >= randomValue) {
+                    const pixelIndex = j * 4;
+                    clusters.push({
+                        center: this.getRGBFromPixel(pixelIndex),
+                        pixels: [],
+                    });
+                    usedIndices.add(pixelIndex);
+                    break;
+                }
+            }
+        }
+
+        return clusters;
     }
 }
